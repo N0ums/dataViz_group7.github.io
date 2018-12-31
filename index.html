@@ -1,1 +1,33 @@
-Hello world
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Sequences sunburst</title>
+    <script src="//d3js.org/d3.v4.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans:400,600">
+    <link rel="stylesheet" type="text/css" href="sunburst.css"/>
+  </head>
+  <body>
+    <div id="main">
+      <!--Div of the sunburst.-->
+      <div id="sunburst"></div>
+      <div id="chart">
+        <!--When user mouseover an item, the name of the item is displayed in sunburst center.-->
+        <div id="explanation" style="visibility: hidden;">
+          <span id="info"></span><br/>
+          Selection : 
+        </div>
+      </div>
+    </div>
+    <!--Legend hidden when checkbox is not cheked.-->
+    <div id="sidebar">
+      <input type="checkbox" id="togglelegend"> Legend<br/>
+      <div id="legend" style="visibility: hidden;"></div>
+    </div>
+    <script type="text/javascript" src="sunburst.js"></script>
+    <script type="text/javascript">
+      // Hack to make this example display correctly in an iframe on bl.ocks.org
+      d3.select(self.frameElement).style("height", "700px");
+  </script> 
+  </body>
+</html>
