@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<head>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+</head>
+<body>
+    <svg></svg>
+</body>
+
+<script>
+    
+    var data = "datas/synth.csv";
+    var totalDeaths = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
+    var infectiousDeaths = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
+    var chemical = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
+    var water = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
+    var air = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
+    var coo = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
+    var factors = ["Total_deaths", "Infectious_deaths", "Chemical_pollution", "Water_pollution", "Air_pollution_PM2.5", "COO_emission"];
+    var continentsCode = ["EMR", "AFR", "EUR", "AMR", "WPR", "SEAR"];
+    
+    var nodes = {"name": "origin", "children": [
+        {
+            "name": "EMR",
+            "size": 1/continentsCode.length,
+            "children": [{"name": "Total_deaths", "size": 1, "value" : 0}, {"name": "Infectious_deaths", "size": 1, "value" : 0}, {"name": "Chemical_pollution", "size": 1, "value" : 0}, {"name": "Water_pollution", "size": 1, "value" : 0}, {"name": "Air_pollution_PM2.5", "size": 1, "value" : 0}, {"name": "COO_emission", "size": 1, "value" : 0}]
+        }, 
+        {
+            "name": "AFR",
+            "size": 1/continentsCode.length,
+            "children": [{"name": "Total_deaths", "size": 1, "value" : 0}, {"name": "Infectious_deaths", "size": 1, "value" : 0}, {"name": "Chemical_pollution", "size": 1, "value" : 0}, {"name": "Water_pollution", "size": 1, "value" : 0}, {"name": "Air_pollution_PM2.5", "size": 1, "value" : 0}, {"name": "COO_emission", "size": 1, "value" : 0}]
+        }, 
+        {
+            "name": "EUR",
+            "size": 1/continentsCode.length,
+            "children": [{"name": "Total_deaths", "size": 1, "value" : 0}, {"name": "Infectious_deaths", "size": 1, "value" : 0}, {"name": "Chemical_pollution", "size": 1, "value" : 0}, {"name": "Water_pollution", "size": 1, "value" : 0}, {"name": "Air_pollution_PM2.5", "size": 1, "value" : 0}, {"name": "COO_emission", "size": 1, "value" : 0}]
+        },
+        {
+            "name": "AMR",
+            "size": 1/continentsCode.length,
+            "children": [{"name": "Total_deaths", "size": 1, "value" : 0}, {"name": "Infectious_deaths", "size": 1, "value" : 0}, {"name": "Chemical_pollution", "size": 1, "value" : 0}, {"name": "Water_pollution", "size": 1, "value" : 0}, {"name": "Air_pollution_PM2.5", "size": 1, "value" : 0}, {"name": "COO_emission", "size": 1, "value" : 0}]
+        },
+        {
+            "name": "WPR",
+            "size": 1/continentsCode.length,
+            "children": [{"name": "Total_deaths", "size": 1, "value" : 0}, {"name": "Infectious_deaths", "size": 1, "value" : 0}, {"name": "Chemical_pollution", "size": 1, "value" : 0}, {"name": "Water_pollution", "size": 1, "value" : 0}, {"name": "Air_pollution_PM2.5", "size": 1, "value" : 0}, {"name": "COO_emission", "size": 1, "value" : 0}]
+        },
+        {
+            "name": "SEAR",
+            "size": 1/continentsCode.length,
+            "children": [{"name": "Total_deaths", "size": 1, "value" : 0}, {"name": "Infectious_deaths", "size": 1, "value" : 0}, {"name": "Chemical_pollution", "size": 1, "value" : 0}, {"name": "Water_pollution", "size": 1, "value" : 0}, {"name": "Air_pollution_PM2.5", "size": 1, "value" : 0}, {"name": "COO_emission", "size": 1, "value" : 0}]
+        }
+    ]};
+    
+    function parseCSV (data) {
+        d3.csv(data, function(data) {
+            data.forEach(function(d) {
+                for (var i = 0; i < factors.length; i++){
+                    var key = factors[i];
+                    d[key] = +d[key];
+                    
+                };
+                var continentCode = d["Continent_code"];
+
+                totalDeaths[continentCode] = totalDeaths[continentCode] + d["Total_deaths"];
+                infectiousDeaths[continentCode] = infectiousDeaths[continentCode] + d["Infectious_deaths"];
+                chemical[continentCode] = chemical[continentCode] + d["Chemical_pollution"];
+                water[continentCode] = water[continentCode] + d["Water_pollution"];
+                air[continentCode] = air[continentCode] + d["Air_pollution_PM2.5"];
+                coo[continentCode] = coo[continentCode] + d["COO_emission"];
+            });
+            ratioFactors();
+        }); 
+        return (totalDeaths, infectiousDeaths, chemical, water, air, coo);
+    };
+      
+    function ratioFactors() {
+        var totalDeathsMax = 0;
+        var infectiousDeathsMax = 0;
+        var chemicalMax = 0;
+        var waterMax = 0;
+        var airMax = 0;
+        var cooMax = 0;
+        
+        for (var i = 0; i < continentsCode.length; i++){
+            var key = continentsCode[i];
+            if (totalDeaths[key] >= totalDeathsMax){
+                totalDeathsMax = totalDeaths[key];
+            }
+            if (infectiousDeaths[key] >= infectiousDeathsMax){
+                infectiousDeathsMax = infectiousDeaths[key];
+            }
+            if (chemical[key] >= chemicalMax){
+                chemicalMax = chemical[key];
+            }
+            if (water[key] >= waterMax){
+                waterMax = water[key]; 
+            }
+            if (air[key] >= airMax){
+                airMax = air[key];
+            }
+            if (coo[key] >= cooMax){
+                cooMax = coo[key];
+            }
+        };
+        for (var i = 0; i < continentsCode.length; i++){
+            var key = continentsCode[i];
+            totalDeaths[key] = totalDeaths[key] / totalDeathsMax;
+            infectiousDeaths[key] = infectiousDeaths[key] / infectiousDeathsMax;
+            chemical[key] = chemical[key] /chemicalMax;
+            water[key] = water[key] / waterMax;
+            air[key] = air[key] / airMax;
+            coo[key] = coo[key] / cooMax;
+        };
+        hierarachyNodes();
+    };
+    
+    function hierarachyNodes() {
+        var factors = [totalDeaths, infectiousDeaths, chemical, water, air, coo];
+        nodes.children.forEach(function(continent){
+            var c = continent.name;
+            continent.children[0]["value"] = factors[0][c];
+            continent.children[1]["value"] = factors[1][c];
+            continent.children[2]["value"] = factors[2][c];
+            continent.children[3]["value"] = factors[3][c];
+            continent.children[4]["value"] = factors[4][c];
+            continent.children[5]["value"] = factors[5][c];
+        });
+    };
+    parseCSV(data);
+    
+    // JSON data
+    var nodeData = {
+        "name": "TOPICS", "children": [{
+            "name": "Topic A",
+            "children": [{"name": "Sub A1", "size": 4}, {"name": "Sub A2", "size": 4}]
+        }, {
+            "name": "Topic B",
+            "children": [{"name": "Sub B1", "size": 3}, {"name": "Sub B2", "size": 3}, {
+                "name": "Sub B3", "size": 3}]
+        }, {
+            "name": "Topic C",
+            "children": [{"name": "Sub A1", "size": 4}, {"name": "Sub A2", "size": 4}]
+        }]
+    };
+
+    // Variables
+    var width = 500;
+    var height = 500;
+    var radius = Math.min(width, height) / 2;
+    var color = d3.scaleOrdinal(d3.schemeCategory20b);
+
+    // Create primary <g> element
+    var g = d3.select('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .append('g')
+        .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')');
+
+    // Data strucure
+    var partition = d3.partition()
+        .size([2 * Math.PI, radius]);
+
+    // Find data root
+    console.log(nodes)
+    var root = d3.hierarchy(nodes)
+        .sum(function (d) { return d.size});
+    console.log(nodes)
+
+    // Size arcs
+    partition(root);
+    var arc = d3.arc()
+        .startAngle(function (d) { return d.x0 })
+        .endAngle(function (d) { return d.x1 })
+        .innerRadius(function (d) { return d.y0 })
+        .outerRadius(function (d) { return d.y1 });
+
+    // Put it all together
+    g.selectAll('path')
+        .data(root.descendants())
+        .enter().append('path')
+        .attr("display", function (d) { return d.depth ? null : "none"; })
+        .attr("d", arc)
+        .style('stroke', '#fff')
+        .style("fill", function (d) { return color((d.children ? d : d.parent).data.name); });
+</script>
