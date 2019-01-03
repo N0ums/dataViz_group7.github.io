@@ -8,16 +8,41 @@
 
 <script>
     
-    var data = "datas/synth.csv";
+    //Variables for the sunburst.
+    var width = 500;
+    var height = 500;
+    var radius = Math.min(width, height) / 2;
+    var color = d3.scaleOrdinal(d3.schemeCategory20b);
+    var colorSelected = {"origin": "#FFFFFF", "EMR": "#DABDBE", "AFR": "#DABDBE", "EUR": "#DABDBE", "AMR": "#DABDBE", "WPR": "#DABDBE", "SEAR": "#DABDBE", "Total_deaths": "#D1000A", "Infectious_deaths": "#0AD100", "Chemical_pollution": "#D1C600", "Water_pollution": "#0600D1", "Air_pollution_PM2.5": "#00CDD1", "COO_emission": "#30303A"}
+    
+    //Create primary <g> element in <SVG> with the correctwidth and height.
+    var g = d3.select('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .append('g')
+        .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')');  //Goes from (x=0, y=0) at (x=250, y=250) the center of the sunburst.
+
+    //Partition of the sunburst.
+    var partition = d3.partition()
+        .size([2 * Math.PI, radius]);
+    
+    //Environment varibles.
+    //CSV file who contains all datas.
+    var data = "datas/synth.csv";   
+    
+    //This variables must contains all datas for each factor.
     var totalDeaths = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
     var infectiousDeaths = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
     var chemical = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
     var water = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
     var air = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
     var coo = {"EMR": 0, "AFR": 0 , "EUR": 0, "AMR": 0 , "WPR" : 0, "SEAR" : 0};
+    
+    //Variables for keys accession.
     var factors = ["Total_deaths", "Infectious_deaths", "Chemical_pollution", "Water_pollution", "Air_pollution_PM2.5", "COO_emission"];
     var continentsCode = ["EMR", "AFR", "EUR", "AMR", "WPR", "SEAR"];
     
+    //Varibale to get in shape datas extracted for sunburst only (hierarchy model needed for sunburst).
     var nodes = {"name": "origin", "value": 1, "children": [
         {
             "name": "EMR",
@@ -56,16 +81,22 @@
             "children": [{"name": "Total_deaths", "size": 1, "value" : 0}, {"name": "Infectious_deaths", "size": 1, "value" : 0}, {"name": "Chemical_pollution", "size": 1, "value" : 0}, {"name": "Water_pollution", "size": 1, "value" : 0}, {"name": "Air_pollution_PM2.5", "size": 1, "value" : 0}, {"name": "COO_emission", "size": 1, "value" : 0}]
         }
     ]};
+    
+    //This variable contains all datas and respect hierarchy.
     var valuesNodes = [];
     
+    //This function takes only "data", as string, in arguments. It allow to extract values in CSV file and tranform them in number. Then all datas are get-up
+    //in the corresponding variable factor. Finally call "ratioFactor" function. 
     function parseCSV (data) {
         d3.csv(data, function(data) {
             data.forEach(function(d) {
+                //Transform each value in number type.
                 for (var i = 0; i < factors.length; i++){
                     var key = factors[i];
                     d[key] = +d[key];
                     
                 };
+                //Put each value in the correponding variable factor and the corresponding continent.
                 var continentCode = d["Continent_code"];
 
                 totalDeaths[continentCode] = totalDeaths[continentCode] + d["Total_deaths"];
@@ -79,7 +110,9 @@
         }); 
         return (totalDeaths, infectiousDeaths, chemical, water, air, coo);
     };
-      
+    
+    //This function take all variables factor in argument. It make the ratio for each factor. For factor, the continent with the bigger value have the
+    //maximal ratio (1), for the other, the ratio decrease in function of the ratio value(n)/value(n max). Finally it's call hierarchyNodes function.
     function ratioFactors() {
         var totalDeathsMax = 0;
         var infectiousDeathsMax = 0;
@@ -88,6 +121,7 @@
         var airMax = 0;
         var cooMax = 0;
         
+        //Takes the maximum value for each factor.
         for (var i = 0; i < continentsCode.length; i++){
             var key = continentsCode[i];
             if (totalDeaths[key] >= totalDeathsMax){
@@ -109,6 +143,7 @@
                 cooMax = coo[key];
             }
         };
+        //Then calculate the ratio.
         for (var i = 0; i < continentsCode.length; i++){
             var key = continentsCode[i];
             totalDeaths[key] = totalDeaths[key] / totalDeathsMax;
@@ -121,8 +156,12 @@
         hierarachyNodes();
     };
     
+    //This function takes all variables factor in argument. It's adapt each value for hierarchy needed for sunburst. It put each value in the "nodes" 
+    //variable. Then it calls parseValuesNodes function.
     function hierarachyNodes() {
+        //Allvariables factors are contains in "factors" variable.
         var factors = [totalDeaths, infectiousDeaths, chemical, water, air, coo];
+        //Each value of each variable factor are put in "nodes.children" in a correct way. 
         nodes.children.forEach(function(continent){
             var c = continent.name;
             continent.children[0]["value"] = factors[0][c];
@@ -136,6 +175,8 @@
     };
     parseCSV(data);
     
+    //This function takes "nodes" variable (at hierarchy for sunburst). For each value it takes the value calculate in ratioFactors function, beacause when
+    //we try to take this values in "nodes" it's retrun "0" or "1". Each are put in a array name valuesNodes. Then it callsdrawSunburst function.
     function parseValuesNodes () {
         valuesNodes.push(nodes.value);
         for (var i = 0; i < continentsCode.length; i++){
@@ -148,63 +189,37 @@
         };
         drawSunburst() 
     };
-    
-    // JSON data
-    var nodeData = {
-        "name": "TOPICS", "children": [{
-            "name": "Topic A",
-            "children": [{"name": "Sub A1", "size": 4}, {"name": "Sub A2", "size": 4}]
-        }, {
-            "name": "Topic B",
-            "children": [{"name": "Sub B1", "size": 3}, {"name": "Sub B2", "size": 3}, {
-                "name": "Sub B3", "size": 3}]
-        }, {
-            "name": "Topic C",
-            "children": [{"name": "Sub A1", "size": 4}, {"name": "Sub A2", "size": 4}]
-        }]
-    };
 
-    // Variables
-    var width = 500;
-    var height = 500;
-    var radius = Math.min(width, height) / 2;
-    var color = d3.scaleOrdinal(d3.schemeCategory20b);
-
-    // Create primary <g> element
-    var g = d3.select('svg')
-        .attr('width', width)
-        .attr('height', height)
-        .append('g')
-        .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')');
-
-    // Data strucure
-    var partition = d3.partition()
-        .size([2 * Math.PI, radius]);
-
+    //This function takes "nodes" and "valuesNodes" variables in arguments. It allow to display the sunburst with our data on the screen of the web 
+    //navigator.  
     function drawSunburst() {
-        // Find data root
+        // Find data root and tranform values contains in "nodes" variabe in a hierarchical object adapted for the sunburst.
         var root = d3.hierarchy(nodes)
             .sum(function (d) { return d.size});
 
-        // Size arcs
+        // Calculate the size of each arcs in the sunburst. Each element have an arc. We have three arcs levels. This first one is in the center, it's the
+        //"origin" element. The second level conatains six continents with the same size. The third level conatiains each factor for each continent, the
+        //size of this arcs must be variable in function of the ratio value calculated before.
         partition(root);
-        console.log(valuesNodes);
         var i = 0;
         var arc = d3.arc()
             .startAngle(function (d) { return d.x0 })
             .endAngle(function (d) { return d.x1 })
             .innerRadius(function (d) { return d.y0 })
-            .outerRadius(function (d) { console.log(d); let score = ((d.y1 - d.y0) * valuesNodes[i]) + d.y0; i+= 1; return score });
-        //console.log(d); console.log(Object.values(d.data)) ;
+            //Y1 is the variable who need to be variable, so we calculate the size of each arc without encroach on level 1 and 2 arcs ("origin" and 
+            //"continents").
+            .outerRadius(function (d) { let score = ((d.y1 - d.y0) * valuesNodes[i]) + d.y0; i+= 1; return score });
 
-        // Put it all together
+        // Put it all together, add a path through each element and draw them with a specific color.
         g.selectAll('path')
             .data(root.descendants())
             .enter().append('path')
             .attr("display", function (d) { return d.depth ? null : "none"; })
             .attr("d", arc)
+            //The color between arcs must be white.
             .style('stroke', '#fff')
-            .style("fill", function (d) { return color((d.children ? d : d.parent).data.name); });
+            //The color of each arcs is specific of each type of value (contients are in a specific color and each factor in others specifics colors).
+            .style("fill", function (d) { key = d.data.name; col = colorSelected[key]; return col; });
     };
     
 </script>
