@@ -2,6 +2,26 @@
 <head>
     <script src="https://d3js.org/d3.v4.min.js"></script>
 </head>
+
+<style> /* set the CSS */
+
+body { font: 12px Arial;}
+
+div.tooltip {	
+    position: absolute;			
+    text-align: center;			
+    width: auto;					
+    height: auto;					
+    padding: 2px;				
+    font: 12px sans-serif;		
+    background: lightsteelblue;	
+    border: 0px;		
+    border-radius: 8px;			
+    pointer-events: none;			
+}
+
+</style>
+
 <body>
     <svg></svg>
 </body>
@@ -13,6 +33,10 @@
     var height = 500;
     var radius = Math.min(width, height) / 2;
     var color = d3.scaleOrdinal(d3.schemeCategory20b);
+    // Define the div for the tooltip
+    var div = d3.select("body").append("div")	
+        .attr("class", "tooltip")				
+        .style("opacity", 0);
     var colorSelected = {"origin": "#FFFFFF", "EMR": "#DABDBE", "AFR": "#DABDBE", "EUR": "#DABDBE", "AMR": "#DABDBE", "WPR": "#DABDBE", "SEAR": "#DABDBE", "Total_deaths": "#D1000A", "Infectious_deaths": "#0AD100", "Chemical_pollution": "#D1C600", "Water_pollution": "#0600D1", "Air_pollution_PM2.5": "#00CDD1", "COO_emission": "#30303A"}
     
     //Create primary <g> element in <SVG> with the correctwidth and height.
@@ -41,6 +65,8 @@
     //Variables for keys accession.
     var factors = ["Total_deaths", "Infectious_deaths", "Chemical_pollution", "Water_pollution", "Air_pollution_PM2.5", "COO_emission"];
     var continentsCode = ["EMR", "AFR", "EUR", "AMR", "WPR", "SEAR"];
+	var correspondingFactors = {"Total_deaths" : "Total deaths", "Infectious_deaths" : "Infectious deaths", "Chemical_pollution" : "Chemical pollution", "Water_pollution" : "Water pollution", "Air_pollution_PM2.5" : "Air pollution with PM 2.5", "COO_emission" : "CO2 pollution"};
+    var correspondingContinent = {"EMR" : "Eastern Mediterranean", "AFR" : "Africa", "EUR" : "Europe", "AMR" : "Americas", "WPR" : "Western Pacific", "SEAR" : "South-East Asia"};
     
     //Varibale to get in shape datas extracted for sunburst only (hierarchy model needed for sunburst).
     var nodes = {"name": "origin", "value": 1, "children": [
@@ -81,21 +107,25 @@
             "children": [{"name": "Total_deaths", "size": 1, "value" : 0}, {"name": "Infectious_deaths", "size": 1, "value" : 0}, {"name": "Chemical_pollution", "size": 1, "value" : 0}, {"name": "Water_pollution", "size": 1, "value" : 0}, {"name": "Air_pollution_PM2.5", "size": 1, "value" : 0}, {"name": "COO_emission", "size": 1, "value" : 0}]
         }
     ]};
-    
+	
     //This variable contains all datas and respect hierarchy.
     var valuesNodes = [];
     
+<------------------------------------------ PRE-PROCESSING ---------------------------------->
+	
     //This function takes only "data", as string, in arguments. It allow to extract values in CSV file and tranform them in number. Then all datas are get-up
     //in the corresponding variable factor. Finally call "ratioFactor" function. 
     function parseCSV (data) {
+		var countries = 0;
         d3.csv(data, function(data) {
             data.forEach(function(d) {
+				countries += 1;
                 //Transform each value in number type.
                 for (var i = 0; i < factors.length; i++){
                     var key = factors[i];
                     d[key] = +d[key];
-                    
                 };
+				
                 //Put each value in the correponding variable factor and the corresponding continent.
                 var continentCode = d["Continent_code"];
 
@@ -106,6 +136,14 @@
                 air[continentCode] = air[continentCode] + d["Air_pollution_PM2.5"];
                 coo[continentCode] = coo[continentCode] + d["COO_emission"];
             });
+			
+			//Then calculate the ratio of value/number of countries for values originally in percentages.
+			for (var i = 0; i < continentsCode.length; i++){
+            	var key = continentsCode[i];
+                chemical[key] = chemical[key] / countries;
+                water[key] = water[key] / countries;
+                air[key] = air[key] / countries;
+			}
             ratioFactors();
         }); 
         return (totalDeaths, infectiousDeaths, chemical, water, air, coo);
@@ -114,12 +152,13 @@
     //This function take all variables factor in argument. It make the ratio for each factor. For factor, the continent with the bigger value have the
     //maximal ratio (1), for the other, the ratio decrease in function of the ratio value(n)/value(n max). Finally it's call hierarchyNodes function.
     function ratioFactors() {
-        var totalDeathsMax = 0;
-        var infectiousDeathsMax = 0;
-        var chemicalMax = 0;
-        var waterMax = 0;
-        var airMax = 0;
-        var cooMax = 0;
+		//Global variables needed to call after them in infoBubble function.
+        totalDeathsMax = 0;
+        infectiousDeathsMax = 0;
+        chemicalMax = 0;
+        waterMax = 0;
+        airMax = 0;
+        cooMax = 0;
         
         //Takes the maximum value for each factor.
         for (var i = 0; i < continentsCode.length; i++){
@@ -143,6 +182,7 @@
                 cooMax = coo[key];
             }
         };
+		
         //Then calculate the ratio.
         for (var i = 0; i < continentsCode.length; i++){
             var key = continentsCode[i];
@@ -190,6 +230,9 @@
         drawSunburst() 
     };
 
+<------------------------------------------ SUNBURST ---------------------------------->
+	
+	
     //This function takes "nodes" and "valuesNodes" variables in arguments. It allow to display the sunburst with our data on the screen of the web 
     //navigator.  
     function drawSunburst() {
@@ -211,15 +254,82 @@
             .outerRadius(function (d) { let score = ((d.y1 - d.y0) * valuesNodes[i]) + d.y0; i+= 1; return score });
 
         // Put it all together, add a path through each element and draw them with a specific color.
-        g.selectAll('path')
+        g.selectAll('g')
             .data(root.descendants())
-            .enter().append('path')
+            .enter().append('g').attr("class", "node").append('path')
             .attr("display", function (d) { return d.depth ? null : "none"; })
             .attr("d", arc)
             //The color between arcs must be white.
             .style('stroke', '#fff')
             //The color of each arcs is specific of each type of value (contients are in a specific color and each factor in others specifics colors).
-            .style("fill", function (d) { key = d.data.name; col = colorSelected[key]; return col; });
+            .style("fill", function (d) { key = d.data.name; col = colorSelected[key]; return col; })
+			//Show ingo bubble when mouseover.
+            .on("mouseover", function(d) {		
+                div.transition()		
+                    .duration(200)		
+                    .style("opacity", .9);		
+                div.html(infoBubble(d))	
+                    .style("left", (d3.event.pageX) + "px")		
+                    .style("top", (d3.event.pageY - 28) + "px")	
+                })					
+            .on("mouseout", function(d) {		
+                div.transition()		
+                    .duration(500)		
+                    .style("opacity", 0);	
+            });
+        
+        // Populate the <text> elements with our data-driven titles.
+        //g.selectAll(".node")
+            //.append("text")
+            //.attr("transform", function(d, i) {
+                //console.log(d);
+                //console.log(d.x0);
+                //console.log(d.x1);
+                //console.log(d.y0);
+                //console.log(d.y1);
+                //console.log([d.x0 + (d.x1 - d.x0)/2, d.y0 + (d.y1 - d.y0)/2]);
+                //return "translate(" + arc.centroid(d) + ")rotate(" + computeTextRotation(d) + ")"; })
+            //.attr("dx", "-20") // radius margin
+            //.attr("dy", ".5em") // rotation align
+            //.text(function(d) { return d.parent ? d.data.name : "" })
+        //;
     };
     
+	//Functions for sunburst.
+	//
+	//This function takes the object "d" of hierarcal datas in sunburst for arguments. It allow to format all datas shox in the sunburst when the user
+	//point a specific element.
+    function infoBubble(d) {
+        if (d.data.name === "origin") {
+            allDeaths = 0;
+            for (key in continentsCode) {
+                allDeaths = allDeaths + totalDeaths[key];
+            }
+            return "Total deaths cause by environment :" + allDeaths;
+        } else if (correspondingContinent[d.data.name]) {
+            return "Continent selected :" + correspondingContinent[d.data.name];
+        } else if (correspondingFactors[d.data.name]) {
+			var val = 0;
+			var info = "";
+			
+			if (d.data.name === "Total_deaths") { val = Math.round(totalDeaths[d.parent.data.name] * totalDeathsMax); info = " people death.";}
+			else if (d.data.name === "Infectious_deaths") { val = Math.round(totalDeaths[d.parent.data.name] * infectiousDeathsMax); info = " people death by infection.";}
+			else if (d.data.name === "Chemical_pollution") { val = (totalDeaths[d.parent.data.name] * chemicalMax).toFixed(3); info = " mortality rate from unintentional poisoning (per 100 000 population)."}
+			else if (d.data.name === "Water_pollution") { val = (totalDeaths[d.parent.data.name] * waterMax).toFixed(3); info = " mortality rate attributed to exposure to unsafe WASH services (per 100 000 population)";}
+			else if (d.data.name === "Air_pollution_PM2.5") { val = (totalDeaths[d.parent.data.name] * airMax).toFixed(3); info = " percentage of the population exposed at more of 10mg/m3 during a year.";}
+			else if (d.data.name === "COO_emission") { val = Math.round(totalDeaths[d.parent.data.name] * cooMax); info = " kTons of CO2 release."}
+			
+			return "Continent selected :" + correspondingContinent[d.parent.data.name] + "<br/>" + correspondingFactors[d.data.name] + " :" + val + info; 
+		}
+    }
+    
+	//This function takes the d.x0 and d.x1 values of each arc in the sunburst for argument. It calculate an angle of rotation to plot correctly element's
+	//names on the sunburst.
+    function computeTextRotation(d) {
+        var angle = (d.x0 + d.x1) / Math.PI * 90;
+        // Avoid upside-down labels
+        return (angle < 120 || angle > 270) ? angle : angle + 180;  // labels as rims
+        //return (angle < 180) ? angle - 90 : angle + 90;  // labels as spokes
+    }
+	
 </script>
